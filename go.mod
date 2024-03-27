@@ -2,4 +2,6 @@ module github.com/agustinlamenza/onebrc
 
 go 1.22.1
 
-require golang.org/x/sync v0.6.0
+require github.com/dolthub/swiss v0.2.1
+
+require github.com/dolthub/maphash v0.1.0 // indirect

@@ -12,13 +12,15 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/dolthub/swiss"
 )
 
 const (
 	FILE_NAME  = "./data/measurements.txt"
 	BUFFER     = 16 * 1024 * 1024
 	BUFFER_CH  = 10000
-	CONCURRENT = 100
+	CONCURRENT = 1000
 )
 
 func main() {
@@ -124,12 +126,13 @@ func run() error {
 		}(i)
 	}
 
-	result := Places{}
+	result := swiss.NewMap[string, Summary](2048)
 
 	go func() {
 		for p := range out {
 			for station, stationData := range p {
-				val, ok := result[station]
+
+				val, ok := result.Get(station)
 				if ok {
 					if val.Min >= stationData.Min {
 						val.Min = stationData.Min
@@ -142,12 +145,12 @@ func run() error {
 					val.Sum += stationData.Sum
 					val.Count += stationData.Count
 				} else {
-					result[station] = &Summary{
+					result.Put(station, Summary{
 						Min:   stationData.Min,
 						Max:   stationData.Max,
 						Sum:   stationData.Sum,
 						Count: stationData.Count,
-					}
+					})
 				}
 			}
 		}
@@ -156,9 +159,10 @@ func run() error {
 	wg.Wait()
 	close(out)
 
-	for name, p := range result {
-		fmt.Printf("(%v) Place: %v, MIN: %v AVG: %v MAX: %v\n", p.Count, name, p.Min, p.Avg(), p.Max)
-	}
+	result.Iter(func(k string, v Summary) (stop bool) {
+		fmt.Printf("(%v) Place: %v, MIN: %v AVG: %v MAX: %v\n", v.Count, k, v.Min, v.Avg(), v.Max)
+		return false
+	})
 
 	return nil
 }
